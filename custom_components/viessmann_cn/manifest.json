@@ -1,0 +1,12 @@
+{
+  "domain": "viessmann_cn",
+  "name": "Viessmann CN (菲斯曼互联)",
+  "codeowners": ["@jimgo188"],
+  "config_flow": true,
+  "documentation": "https://github.com/jimgo188/hass-viessmann-cn",
+  "integration_type": "hub",
+  "iot_class": "cloud_polling",
+  "issue_tracker": "https://github.com/jimgo188/hass-viessmann-cn/issues",
+  "requirements": [],
+  "version": "1.0.0"
+}

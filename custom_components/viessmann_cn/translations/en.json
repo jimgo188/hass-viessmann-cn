@@ -1,0 +1,62 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Viessmann CN account",
+        "description": "Phone number and password of the Viessmann CN (菲斯曼互联) app. The account needs at least one bound boiler.",
+        "data": {
+          "username": "Phone number",
+          "password": "Password"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Sign in again",
+        "description": "The Viessmann cloud rejected the stored credentials. Enter the password for {username}.",
+        "data": {
+          "password": "Password"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Wrong phone number or password",
+      "cannot_connect": "Cannot reach the Viessmann cloud",
+      "api_error": "The Viessmann cloud returned an error",
+      "no_devices": "No boiler is bound to this account",
+      "unknown": "Unexpected error"
+    },
+    "abort": {
+      "already_configured": "This account is already configured",
+      "reauth_successful": "Signed in again"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Options",
+        "description": "The Viessmann cloud is slow to update; polling faster has no benefit.",
+        "data": {
+          "scan_interval": "Poll interval (seconds)"
+        }
+      }
+    }
+  },
+  "entity": {
+    "water_heater": {
+      "dhw": {"name": "Domestic hot water"}
+    },
+    "climate": {
+      "heating": {"name": "Heating"}
+    },
+    "sensor": {
+      "dhw_temperature": {"name": "DHW temperature"},
+      "ch_temperature": {"name": "Heating flow temperature"},
+      "operating_mode": {"name": "Operating mode"},
+      "fault_code": {"name": "Fault code"},
+      "firmware": {"name": "WiFi firmware"}
+    },
+    "binary_sensor": {
+      "burning": {"name": "Burning"},
+      "fault": {"name": "Fault"}
+    }
+  }
+}

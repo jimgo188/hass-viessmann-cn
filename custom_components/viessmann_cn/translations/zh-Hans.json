@@ -1,0 +1,62 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "菲斯曼互联账号",
+        "description": "使用「菲斯曼互联」App 登录的手机号和密码。账号下至少需要绑定一台壁挂炉。",
+        "data": {
+          "username": "手机号",
+          "password": "密码"
+        }
+      },
+      "reauth_confirm": {
+        "title": "重新登录",
+        "description": "菲斯曼云端拒绝了当前凭据，请为 {username} 重新输入密码。",
+        "data": {
+          "password": "密码"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "手机号或密码错误",
+      "cannot_connect": "无法连接菲斯曼云端，请稍后再试",
+      "api_error": "菲斯曼云端返回错误",
+      "no_devices": "该账号下没有找到壁挂炉",
+      "unknown": "未知错误"
+    },
+    "abort": {
+      "already_configured": "该账号已经添加过了",
+      "reauth_successful": "重新登录成功"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "选项",
+        "description": "菲斯曼云端刷新较慢，轮询太频繁没有意义。",
+        "data": {
+          "scan_interval": "刷新间隔（秒）"
+        }
+      }
+    }
+  },
+  "entity": {
+    "water_heater": {
+      "dhw": {"name": "生活热水"}
+    },
+    "climate": {
+      "heating": {"name": "采暖"}
+    },
+    "sensor": {
+      "dhw_temperature": {"name": "生活热水温度"},
+      "ch_temperature": {"name": "采暖出水温度"},
+      "operating_mode": {"name": "运行模式"},
+      "fault_code": {"name": "故障码"},
+      "firmware": {"name": "WiFi 固件版本"}
+    },
+    "binary_sensor": {
+      "burning": {"name": "燃烧中"},
+      "fault": {"name": "故障"}
+    }
+  }
+}
