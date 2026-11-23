@@ -38,6 +38,8 @@ class FakeCloud:
         self.dhw_probe = 47
         self.ch_probe = 45
 
+        self.fail_family_v2 = False
+
         self.requests: list[tuple[str, str]] = []
         self.last_detail_headers: dict[str, str] = {}
         self.last_detail_content_type: str | None = None
@@ -134,6 +136,10 @@ class FakeCloud:
     async def handle_family_devices(self, request: web.Request) -> web.Response:
         if not await self._auth(request):
             return self._unauthorized()
+        if self.fail_family_v2 and request.path.endswith("/v2"):
+            return web.json_response(
+                {"code": 500, "msg": "系统错误", "data": None}, status=500
+            )
         return web.json_response(
             {
                 "code": 0,
@@ -202,6 +208,7 @@ class FakeCloud:
         app.router.add_get("/idass/user/info", self.handle_user_info)
         app.router.add_post("/api/family/list", self.handle_family_list)
         app.router.add_post("/api/home/familyDevices/v2", self.handle_family_devices)
+        app.router.add_post("/api/home/familyDevices", self.handle_family_devices)
         app.router.add_post("/api/device/detail", self.handle_detail)
         app.router.add_post("/api/device/scanStatus", self.handle_scan)
         app.router.add_post("/api/3/sendToDevice/setDhwTemp", self.handle_set_dhw)

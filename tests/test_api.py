@@ -90,6 +90,12 @@ async def main() -> int:
         else:
             check("ConnectionError", "not raised", "raised")
 
+        print("6b. familyDevices/v2 失败时回退老路径")
+        fake.fail_family_v2 = True
+        devices = await api.async_get_devices(refresh=True)
+        check("回退后仍有设备", len(devices), 1)
+        fake.fail_family_v2 = False
+
         print("7. 请求头与表单编码")
         check(
             "innerKey",

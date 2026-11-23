@@ -23,6 +23,7 @@ from .const import (
     DEFAULT_HEADERS,
     ENDPOINT_DEVICE_DETAIL,
     ENDPOINT_FAMILY_DEVICES,
+    ENDPOINT_FAMILY_DEVICES_V1,
     ENDPOINT_FAMILY_LIST,
     ENDPOINT_LOGIN,
     ENDPOINT_SCAN_STATUS,
@@ -54,10 +55,14 @@ class ViessmannConnectionError(ViessmannError):
 class ViessmannApiError(ViessmannError):
     """The cloud answered with a business error code."""
 
-    def __init__(self, code: Any, message: str) -> None:
-        super().__init__(f"{message} (code {code})")
+    def __init__(self, code: Any, message: str, path: str = "") -> None:
+        text = f"{message} (code {code})"
+        if path:
+            text = f"{path}: {text}"
+        super().__init__(text)
         self.code = code
         self.message = message
+        self.path = path
 
 
 def _walk_dicts(value: Any) -> Iterable[dict[str, Any]]:
@@ -146,10 +151,13 @@ class ViessmannApi:
         data: dict[str, Any] | None = None,
         json_body: dict[str, Any] | None = None,
         params: dict[str, Any] | None = None,
+        extra_headers: dict[str, str] | None = None,
         authenticated: bool = True,
         retry: bool = True,
     ) -> dict[str, Any]:
         headers = dict(DEFAULT_HEADERS)
+        if extra_headers:
+            headers.update(extra_headers)
         if data is not None:
             headers["Content-Type"] = FORM_CONTENT_TYPE
         if json_body is not None:
@@ -186,6 +194,7 @@ class ViessmannApi:
         code = body.get("code")
         if code not in OK_CODES and code != "0":
             message = str(body.get("msg") or "unknown error")
+            endpoint = f"{method} {path}"
             if status == 401 or code in (401, "401"):
                 if authenticated and retry:
                     _LOGGER.debug("Token rejected, logging in again")
@@ -196,11 +205,12 @@ class ViessmannApi:
                         data=data,
                         json_body=json_body,
                         params=params,
+                        extra_headers=extra_headers,
                         authenticated=authenticated,
                         retry=False,
                     )
-                raise ViessmannAuthError(message)
-            raise ViessmannApiError(code, message)
+                raise ViessmannAuthError(f"{endpoint}: {message}")
+            raise ViessmannApiError(code, message, endpoint)
 
         if status == 401:
             if authenticated and retry:
@@ -211,10 +221,11 @@ class ViessmannApi:
                     data=data,
                     json_body=json_body,
                     params=params,
+                    extra_headers=extra_headers,
                     authenticated=authenticated,
                     retry=False,
                 )
-            raise ViessmannAuthError(f"HTTP 401 on {path}")
+            raise ViessmannAuthError(f"{method} {path}: HTTP 401")
 
         return body
 
@@ -259,6 +270,7 @@ class ViessmannApi:
             "GET",
             ENDPOINT_USER_INFO,
             params={"authToken": token},
+            extra_headers={"authToken": token},
             authenticated=True,
         )
         data = _unwrap_data(body)
@@ -280,25 +292,19 @@ class ViessmannApi:
             return self._devices
 
         if self._user_id is None:
-            await self.async_get_user_info()
+            try:
+                await self.async_get_user_info()
+            except ViessmannError as err:
+                _LOGGER.debug("user/info failed, continuing with the login token: %s", err)
 
-        families = _as_dict_list(
-            _unwrap_data(
-                await self._request(
-                    "POST", ENDPOINT_FAMILY_LIST, data={"userId": self._user_id or ""}
-                )
-            )
-        )
+        families = await self._async_family_list()
 
         devices: list[dict[str, Any]] = []
         for family in families:
             family_id = _first(family, "familyId", "family_id", "id")
             if family_id is None:
                 continue
-            body = await self._request(
-                "POST", ENDPOINT_FAMILY_DEVICES, data={"familyId": str(family_id)}
-            )
-            payload = _unwrap_data(body)
+            payload = await self._async_family_devices(str(family_id))
             seen: set[str] = set()
             for node in _walk_dicts(payload):
                 for key in ("boilerInfos", "boilers", "deviceInfos", "devices"):
@@ -310,6 +316,31 @@ class ViessmannApi:
                         devices.append(self._normalise_device(boiler, family))
         self._devices = devices
         return devices
+
+    async def _async_family_list(self) -> list[dict[str, Any]]:
+        """Fetch families, tolerating a cloud that wants no userId at all."""
+        payload = {"userId": self._user_id} if self._user_id else {}
+        try:
+            body = await self._request("POST", ENDPOINT_FAMILY_LIST, data=payload)
+        except ViessmannApiError as err:
+            if not payload:
+                raise
+            _LOGGER.debug("family/list with userId failed (%s), retrying without", err)
+            body = await self._request("POST", ENDPOINT_FAMILY_LIST, data={})
+        return _as_dict_list(_unwrap_data(body))
+
+    async def _async_family_devices(self, family_id: str) -> Any:
+        """v2 endpoint, with the older path as a fallback for some app versions."""
+        try:
+            body = await self._request(
+                "POST", ENDPOINT_FAMILY_DEVICES, data={"familyId": family_id}
+            )
+        except ViessmannApiError as err:
+            _LOGGER.debug("familyDevices/v2 failed (%s), trying v1 path", err)
+            body = await self._request(
+                "POST", ENDPOINT_FAMILY_DEVICES_V1, data={"familyId": family_id}
+            )
+        return _unwrap_data(body)
 
     @staticmethod
     def _normalise_device(boiler: dict[str, Any], family: dict[str, Any]) -> dict[str, Any]:

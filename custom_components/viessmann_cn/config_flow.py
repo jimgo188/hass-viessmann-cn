@@ -18,6 +18,7 @@ from .api import (
     ViessmannApiError,
     ViessmannAuthError,
     ViessmannConnectionError,
+    ViessmannError,
 )
 from .const import (
     API_BASE_URL,
@@ -58,7 +59,7 @@ class ViessmannConfigFlow(ConfigFlow, domain=DOMAIN):
             except ViessmannConnectionError:
                 errors["base"] = "cannot_connect"
             except ViessmannApiError as err:
-                _LOGGER.debug("API error during setup: %s", err)
+                _LOGGER.error("Viessmann CN setup failed: %s", err)
                 errors["base"] = "api_error"
             except NoDevices:
                 errors["base"] = "no_devices"
@@ -96,7 +97,10 @@ class ViessmannConfigFlow(ConfigFlow, domain=DOMAIN):
                 errors["base"] = "invalid_auth"
             except ViessmannConnectionError:
                 errors["base"] = "cannot_connect"
-            except (ViessmannApiError, NoDevices):
+            except ViessmannApiError as err:
+                _LOGGER.error("Viessmann CN reauth failed: %s", err)
+                errors["base"] = "api_error"
+            except NoDevices:
                 errors["base"] = "api_error"
             except Exception:  # noqa: BLE001
                 _LOGGER.exception("Unexpected error during reauth")
@@ -170,7 +174,13 @@ async def _async_validate(
         base_url or data.get(CONF_BASE_URL) or API_BASE_URL,
     )
     await api.async_get_token()
-    info = await api.async_get_user_info()
+    info: dict[str, Any] = {}
+    try:
+        info = await api.async_get_user_info()
+    except ViessmannError as err:
+        # The token from the login response is enough to continue; user/info
+        # is only used to learn the user id.
+        _LOGGER.warning("user/info failed: %s", err)
     user_id = api.user_id or info.get("userId") or data[CONF_USERNAME]
     devices = await api.async_get_devices(refresh=True)
     if not devices:
