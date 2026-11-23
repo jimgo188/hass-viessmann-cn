@@ -8,12 +8,15 @@ on:
 
 jobs:
   hassfest:
-    uses: "home-assistant/actions/.github/workflows/hassfest.yml@master"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: home-assistant/actions/hassfest@master
 
   hacs:
     runs-on: ubuntu-latest
     steps:
-      - uses: "hacs/action@main"
+      - uses: hacs/action@main
         with:
-          category: "integration"
-          ignore: "brands"
+          category: integration
+          ignore: brands
